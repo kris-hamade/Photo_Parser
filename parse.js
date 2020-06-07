@@ -11,10 +11,6 @@ var files = fs.readdirSync(photoPath);
 
 const geoNamesUsername = process.env.GEONAMESUSERNAME
 
-geocoder.selectProvider("geonames", {
-    "username": `${geoNamesUsername}`
-})
-
 var photoData = []
 
 //Function To Convert
@@ -54,10 +50,13 @@ const parsePhotos = async () => new Promise((resolve, reject) => {
                             .post(`http://api.geonames.org/findNearbyPlaceNameJSON?lat=${exifLatitudeDecimal}&lng=${exifLongitudeDecimal}&username=${geoNamesUsername}`)
                             .then(response => {
                                 currentPhotosData = response.body.geonames.forEach((item, index) => {
+                                    delete exifData.image['XPComment']
+                                    delete exifData.image['XPKeywords']
+
                                     photoData.push({
                                         photoFileNameCurrent: file,
                                         latitude: item.lat,
-                                        longitude: item.length,
+                                        longitude: item.lng,
                                         distance: item.distance,
                                         cityName: item.name,
                                         stateName: item.adminName1,
@@ -68,7 +67,7 @@ const parsePhotos = async () => new Promise((resolve, reject) => {
                                         imageData: exifData.image,
                                     })
                                 })
-                                console.log(photoData)
+                                //console.log(photoData)
 
                             }).catch(error => {
                                 console.log("There was an error: ", error)
@@ -82,10 +81,18 @@ const parsePhotos = async () => new Promise((resolve, reject) => {
     })
 })
 
-const logPhotoData = async () => {}
+const renamePhotos = async () => new Promise((resolve, reject) => {
+    photoData.forEach(photo => {
+        console.log(photo)
+    })
+})
+
+const organizePhotos = async () => new Promise((resolve, reject) => {
+
+})
 
 const runProgram = async () => {
     await parsePhotos()
-    await logPhotoData()
+    await renamePhotos()
 }
 runProgram()
