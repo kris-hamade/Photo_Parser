@@ -2,16 +2,15 @@ var ExifImage = require('exif').ExifImage;
 const superagent = require('superagent');
 const dotenv = require('dotenv');
 dotenv.config();
-
 var fs = require('fs');
 const photoPath = process.env.DEVPHOTOPATH
 var files = fs.readdirSync(photoPath);
 
-
+var photoData = []
 
 const geoNamesUsername = process.env.GEONAMESUSERNAME
 
-var photoData = []
+
 
 //Function To Convert
 function ConvertDMSToDD(degrees, minutes, seconds, direction) {
@@ -23,7 +22,7 @@ function ConvertDMSToDD(degrees, minutes, seconds, direction) {
     return dd;
 }
 
-const parsePhotos = async () => new Promise((resolve, reject) => {
+    
     files.forEach(file => {
 
         if (file === '.DS_Store') {
@@ -46,53 +45,93 @@ const parsePhotos = async () => new Promise((resolve, reject) => {
                         console.log("Latitude " + exifLatitudeDecimal)
                         console.log("Longitude " + exifLongitudeDecimal)
 
-                        superagent
-                            .post(`http://api.geonames.org/findNearbyPlaceNameJSON?lat=${exifLatitudeDecimal}&lng=${exifLongitudeDecimal}&username=${geoNamesUsername}`)
-                            .then(response => {
-                                currentPhotosData = response.body.geonames.forEach((item, index) => {
-                                    delete exifData.image['XPComment']
-                                    delete exifData.image['XPKeywords']
-
-                                    photoData.push({
-                                        photoFileNameCurrent: file,
-                                        latitude: item.lat,
-                                        longitude: item.lng,
-                                        distance: item.distance,
-                                        cityName: item.name,
-                                        stateName: item.adminName1,
-                                        stateCode: item.adminCode1,
-                                        countryName: item.countryName,
-                                        countryCode: item.countryCode,
-                                        population: item.population,
-                                        imageData: exifData.image,
-                                    })
-                                })
-                                //console.log(photoData)
-
-                            }).catch(error => {
-                                console.log("There was an error: ", error)
-                            }).finally(resolve)
+                        queryGeoName(file, exifData, exifLatitudeDecimal, exifLongitudeDecimal)
                     }
                 });
+
             } catch (error) {
                 console.log('Error: ' + error.message);
             }
         }
     })
+
+
+const queryGeoName = (file, exifData, exifLatitudeDecimal, exifLongitudeDecimal) => new Promise((resolve, reject) => {
+    superagent
+        .post(`http://api.geonames.org/findNearbyPlaceNameJSON?lat=${exifLatitudeDecimal}&lng=${exifLongitudeDecimal}&username=${geoNamesUsername}`)
+        .then(response => {
+            response.body.geonames.forEach((item, index) => {
+                delete exifData.image['XPComment']
+                delete exifData.image['XPKeywords']
+
+                var dateTaken = exifData.image.ModifyDate.replace(/ /g, "-").replace(/:/g, '')
+                /*                 photoData[index] = {
+                                    photoFileNameCurrent: file,
+                                    latitude: item.lat,
+                                    longitude: item.lng,
+                                    distance: item.distance,
+                                    cityName: item.name,
+                                    stateName: item.adminName1,
+                                    stateCode: item.adminCode1,
+                                    countryName: item.countryName,
+                                    countryCode: item.countryCode,
+                                    population: item.population,
+                                    dateTaken: dateTaken,
+                                    imageData: exifData.image, 
+                                } */
+                photoData.push({
+                    photoFileNameCurrent: file,
+                    latitude: item.lat,
+                    longitude: item.lng,
+                    distance: item.distance,
+                    cityName: item.name,
+                    stateName: item.adminName1,
+                    stateCode: item.adminCode1,
+                    countryName: item.countryName,
+                    countryCode: item.countryCode,
+                    population: item.population,
+                    dateTaken: dateTaken,
+                    imageData: exifData.image,
+                })
+                renamePhotos()
+            })
+        }).catch(error => {
+            console.log("There was an error: ", error)
+        }).finally()
 })
 
-const renamePhotos = async () => new Promise((resolve, reject) => {
+const renamePhotos = () => new Promise((resolve, reject) => {
+    //console.log(photoData)
     photoData.forEach(photo => {
         console.log(photo)
-    })
+
+        var search = photo.photoFileNameCurrent
+        var replace = `${photo.cityName}${photo.stateCode}${photo.countryCode}${photo.dateTaken}.jpg`
+        const {
+            join
+        } = require('path');
+        const {
+            renameSync
+        } = require('fs');
+        const match = RegExp(search, 'g');
+
+        files
+            .filter(file => file.match(match))
+            .forEach(file => {
+                const filePath = join(photoPath, file);
+                const newFilePath = join(photoPath, file.replace(match, replace));
+
+                renameSync(filePath, newFilePath);
+            });
+
+    }) 
 })
 
-const organizePhotos = async () => new Promise((resolve, reject) => {
+const organizePhotos = new Promise((resolve, reject) => {
 
 })
 
 const runProgram = async () => {
-    await parsePhotos()
-    await renamePhotos()
+    
 }
 runProgram()
