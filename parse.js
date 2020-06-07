@@ -106,7 +106,7 @@ const renamePhotos = () => new Promise((resolve, reject) => {
         console.log(photo)
 
         var search = photo.photoFileNameCurrent
-        var replace = `${photo.cityName}${photo.stateCode}${photo.countryCode}${photo.dateTaken}.jpg`
+        var replace = `${photo.cityName}${photo.stateCode}${photo.countryCode}-${photo.dateTaken}.jpg`
         const {
             join
         } = require('path');
@@ -118,10 +118,14 @@ const renamePhotos = () => new Promise((resolve, reject) => {
         files
             .filter(file => file.match(match))
             .forEach(file => {
+                try {
                 const filePath = join(photoPath, file);
                 const newFilePath = join(photoPath, file.replace(match, replace));
 
                 renameSync(filePath, newFilePath);
+                }catch (error) {
+                    console.log('Error: ' + error.message);
+                }
             });
 
     }) 
