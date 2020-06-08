@@ -167,6 +167,7 @@ const renamePhotos = () => new Promise((resolve, reject) => {
 
 
     })
+    organizePhotos()
 })
 
 const organizePhotos = () => new Promise((resolve, reject) => {
