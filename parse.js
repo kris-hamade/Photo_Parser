@@ -22,79 +22,81 @@ function ConvertDMSToDD(degrees, minutes, seconds, direction) {
     return dd;
 }
 
-    
-    files.forEach(file => {
 
-        if (file === '.DS_Store') {
-            console.log("Excluding .DS_Store File")
-        } else {
-            try {
-                new ExifImage({
-                    image: `${photoPath}/${file}`
-                }, function (error, exifData) {
-                    if (error)
-                        console.log('Error: ' + error.message);
-                    else {
+files.forEach(file => {
 
-                        //Prints Pictures EXIF Data
-                        //console.log(exifData);
+    if (file === '.DS_Store') {
+        console.log("Excluding .DS_Store File")
+    } else {
+        try {
+            new ExifImage({
+                image: `${photoPath}/${file}`
+            }, function (error, exifData) {
+                if (error)
+                    console.log('Error: ' + error.message);
+                else {
 
-                        var exifLatitudeDecimal = ConvertDMSToDD(exifData.gps.GPSLatitude[0], exifData.gps.GPSLatitude[1], exifData.gps.GPSLatitude[2], exifData.gps.GPSLatitudeRef);
-                        var exifLongitudeDecimal = ConvertDMSToDD(exifData.gps.GPSLongitude[0], exifData.gps.GPSLongitude[1], exifData.gps.GPSLongitude[2], exifData.gps.GPSLongitudeRef);
+                    //Prints Pictures EXIF Data
+                    //console.log(exifData);
 
-                        console.log("Latitude " + exifLatitudeDecimal)
-                        console.log("Longitude " + exifLongitudeDecimal)
+                    var exifLatitudeDecimal = ConvertDMSToDD(exifData.gps.GPSLatitude[0], exifData.gps.GPSLatitude[1], exifData.gps.GPSLatitude[2], exifData.gps.GPSLatitudeRef);
+                    var exifLongitudeDecimal = ConvertDMSToDD(exifData.gps.GPSLongitude[0], exifData.gps.GPSLongitude[1], exifData.gps.GPSLongitude[2], exifData.gps.GPSLongitudeRef);
 
-                        queryGeoName(file, exifData, exifLatitudeDecimal, exifLongitudeDecimal)
-                    }
-                });
+                    /* console.log("Latitude " + exifLatitudeDecimal)
+                    console.log("Longitude " + exifLongitudeDecimal) */
 
-            } catch (error) {
-                console.log('Error: ' + error.message);
-            }
+                    queryGeoName(file, exifData, exifLatitudeDecimal, exifLongitudeDecimal)
+                }
+            });
+
+        } catch (error) {
+            console.log('Error: ' + error.message);
         }
-    })
+    }
+})
 
 
 const queryGeoName = (file, exifData, exifLatitudeDecimal, exifLongitudeDecimal) => new Promise((resolve, reject) => {
     superagent
         .post(`http://api.geonames.org/findNearbyPlaceNameJSON?lat=${exifLatitudeDecimal}&lng=${exifLongitudeDecimal}&username=${geoNamesUsername}`)
         .then(response => {
-            response.body.geonames.forEach((item, index) => {
-                delete exifData.image['XPComment']
-                delete exifData.image['XPKeywords']
+            if (response.body.geonames !== undefined) {
+                response.body.geonames.forEach((item, index) => {
+                    delete exifData.image['XPComment']
+                    delete exifData.image['XPKeywords']
 
-                var dateTaken = exifData.image.ModifyDate.replace(/ /g, "-").replace(/:/g, '')
-                /*                 photoData[index] = {
-                                    photoFileNameCurrent: file,
-                                    latitude: item.lat,
-                                    longitude: item.lng,
-                                    distance: item.distance,
-                                    cityName: item.name,
-                                    stateName: item.adminName1,
-                                    stateCode: item.adminCode1,
-                                    countryName: item.countryName,
-                                    countryCode: item.countryCode,
-                                    population: item.population,
-                                    dateTaken: dateTaken,
-                                    imageData: exifData.image, 
-                                } */
-                photoData.push({
-                    photoFileNameCurrent: file,
-                    latitude: item.lat,
-                    longitude: item.lng,
-                    distance: item.distance,
-                    cityName: item.name,
-                    stateName: item.adminName1,
-                    stateCode: item.adminCode1,
-                    countryName: item.countryName,
-                    countryCode: item.countryCode,
-                    population: item.population,
-                    dateTaken: dateTaken,
-                    imageData: exifData.image,
+                    var dateTaken = exifData.image.ModifyDate.replace(/ /g, "-").replace(/:/g, '')
+                    /*                 photoData[index] = {
+                                        photoFileNameCurrent: file,
+                                        latitude: item.lat,
+                                        longitude: item.lng,
+                                        distance: item.distance,
+                                        cityName: item.name,
+                                        stateName: item.adminName1,
+                                        stateCode: item.adminCode1,
+                                        countryName: item.countryName,
+                                        countryCode: item.countryCode,
+                                        population: item.population,
+                                        dateTaken: dateTaken,
+                                        imageData: exifData.image, 
+                                    } */
+                    photoData.push({
+                        photoFileNameCurrent: file,
+                        latitude: item.lat,
+                        longitude: item.lng,
+                        distance: item.distance,
+                        cityName: item.name,
+                        stateName: item.adminName1,
+                        stateCode: item.adminCode1,
+                        countryName: item.countryName,
+                        countryCode: item.countryCode,
+                        population: item.population,
+                        dateTaken: dateTaken,
+                        imageData: exifData.image,
+                    })
+                    renamePhotos()
                 })
-                renamePhotos()
-            })
+            }
         }).catch(error => {
             console.log("There was an error: ", error)
         }).finally()
@@ -102,33 +104,48 @@ const queryGeoName = (file, exifData, exifLatitudeDecimal, exifLongitudeDecimal)
 
 const renamePhotos = () => new Promise((resolve, reject) => {
     //console.log(photoData)
+    var path = photoPath
     photoData.forEach(photo => {
         console.log(photo)
+        let newPhotoPath = photoPath+photo.cityName
+        
+        if (fs.existsSync(photoPath+photo.cityName)) {
+            console.log(photoPath+photo.cityName + " Exists")
+            path = newPhotoPath
+        }
+        else {
+            fs.mkdir(`${photoPath+photo.cityName}`, (err) => {
+                if (err) throw err
+                else {
+                console.log(photo.cityName + " Folder Created")
+                path = photoPath
+                }
+              });
+        }
+
 
         var search = photo.photoFileNameCurrent
-        var replace = `${photo.cityName}${photo.stateCode}${photo.countryCode}-${photo.dateTaken}.jpg`
-        const {
-            join
-        } = require('path');
-        const {
-            renameSync
-        } = require('fs');
+        var replace = `${photo.cityName}_${photo.stateCode}_${photo.countryCode}-${photo.dateTaken}.jpg`
+
+        const {join} = require('path');
+        const {renameSync} = require('fs');
         const match = RegExp(search, 'g');
+        console.log("New Path is " + path)
 
         files
             .filter(file => file.match(match))
             .forEach(file => {
                 try {
-                const filePath = join(photoPath, file);
-                const newFilePath = join(photoPath, file.replace(match, replace));
+                    const filePath = join(photoPath, file);
+                    const newFilePath = join(photoPath, file.replace(match, replace));
 
-                renameSync(filePath, newFilePath);
-                }catch (error) {
+                    renameSync(filePath, newFilePath);
+                } catch (error) {
                     console.log('Error: ' + error.message);
                 }
             });
 
-    }) 
+    })
 })
 
 const organizePhotos = new Promise((resolve, reject) => {
@@ -136,6 +153,6 @@ const organizePhotos = new Promise((resolve, reject) => {
 })
 
 const runProgram = async () => {
-    
+
 }
 runProgram()
