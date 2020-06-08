@@ -112,6 +112,26 @@ const renamePhotos = () => new Promise((resolve, reject) => {
         if (fs.existsSync(photoPath+photo.cityName)) {
             console.log(photoPath+photo.cityName + " Exists")
             path = newPhotoPath
+            var search = photo.photoFileNameCurrent
+            var replace = `${photo.cityName}_${photo.stateCode}_${photo.countryCode}-${photo.dateTaken}.jpg`
+    
+            const {join} = require('path');
+            const {renameSync} = require('fs');
+            const match = RegExp(search, 'g');
+            console.log("New Path is " + path)
+    
+            files
+                .filter(file => file.match(match))
+                .forEach(file => {
+                    try {
+                        const filePath = join(photoPath, file);
+                        const newFilePath = join(photoPath, file.replace(match, replace));
+    
+                        renameSync(filePath, newFilePath);
+                    } catch (error) {
+                        console.log('Error: ' + error.message);
+                    }
+                });
         }
         else {
             fs.mkdir(`${photoPath+photo.cityName}`, (err) => {
@@ -119,37 +139,55 @@ const renamePhotos = () => new Promise((resolve, reject) => {
                 else {
                 console.log(photo.cityName + " Folder Created")
                 path = photoPath
+                var search = photo.photoFileNameCurrent
+                var replace = `${photo.cityName}_${photo.stateCode}_${photo.countryCode}-${photo.dateTaken}.jpg`
+        
+                const {join} = require('path');
+                const {renameSync} = require('fs');
+                const match = RegExp(search, 'g');
+                console.log("New Path is " + path)
+        
+                files
+                    .filter(file => file.match(match))
+                    .forEach(file => {
+                        try {
+                            const filePath = join(photoPath, file);
+                            const newFilePath = join(photoPath, file.replace(match, replace));
+        
+                            renameSync(filePath, newFilePath);
+                        } catch (error) {
+                            console.log('Error: ' + error.message);
+                        }
+                    });
                 }
               });
         }
 
 
-        var search = photo.photoFileNameCurrent
-        var replace = `${photo.cityName}_${photo.stateCode}_${photo.countryCode}-${photo.dateTaken}.jpg`
 
-        const {join} = require('path');
-        const {renameSync} = require('fs');
-        const match = RegExp(search, 'g');
-        console.log("New Path is " + path)
-
-        files
-            .filter(file => file.match(match))
-            .forEach(file => {
-                try {
-                    const filePath = join(photoPath, file);
-                    const newFilePath = join(photoPath, file.replace(match, replace));
-
-                    renameSync(filePath, newFilePath);
-                } catch (error) {
-                    console.log('Error: ' + error.message);
-                }
-            });
 
     })
 })
 
-const organizePhotos = new Promise((resolve, reject) => {
+const organizePhotos = () => new Promise((resolve, reject) => {
+    const {renameSync} = require('fs');
+    files.forEach(file => {
 
+        if (file === '.DS_Store') {
+            console.log("Excluding .DS_Store File")
+        } else {
+            try{
+            //if (isNaN(file.charAt(0))) {"Not a Changed File"}
+            
+            var fileCityName = file.split('_')[0]
+            var folderNewFilePath = photoPath+fileCityName+"/"+file
+            var fileNamePath = photoPath+file
+            console.log("Moving File " + fileNamePath + " to " + folderNewFilePath)
+            renameSync(fileNamePath, folderNewFilePath);
+            
+        } catch(err){"Error " + err}
+        }
+    })
 })
 
 const runProgram = async () => {
